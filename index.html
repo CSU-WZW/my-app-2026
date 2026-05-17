@@ -431,9 +431,9 @@
         function initMusic() {
             const audio = document.getElementById('bgmAudio');
             audio.volume = 0.35;
-            // 优先使用本地存储值，没有时默认为 true（开启）
-            const storedValue = localStorage.getItem('musicEnabled');
-            isMusicOn = storedValue === null ? true : storedValue === 'true';
+            // 强制默认开启（忽略之前存储的关闭状态）
+            isMusicOn = true;
+            localStorage.setItem('musicEnabled', 'true');
             updateMusicButton();
 
             document.getElementById('musicToggleBtn').addEventListener('click', () => {
