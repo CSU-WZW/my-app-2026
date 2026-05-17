@@ -7,6 +7,10 @@
 您可以直接访问部署在 GitHub Pages 上的应用：
 [https://o226t025-hash.github.io/my-app-2026/](https://o226t025-hash.github.io/my-app-2026/)
 
+## 📸 应用预览
+
+![时光日程应用预览](./image.png)
+
 ## ✨ 功能特性
 
 - **日程管理**：快速创建、查看和管理您的每日任务。
