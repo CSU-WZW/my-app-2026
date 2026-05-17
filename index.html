@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极简日程管理 - Planner</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter & Noto Sans SC -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans SC', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 自定义美化滚动条 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        /* 页面平滑过渡 */
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .calendar-grid-cell {
+            aspect-ratio: 1.1 / 1;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+
+    <!-- 顶部导航栏 -->
+    <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+                    <i class="fa-solid fa-calendar-check text-lg animate-pulse"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-tight">时光日程 <span class="text-xs text-brand-500 font-normal px-2 py-0.5 bg-brand-50 dark:bg-brand-950/50 rounded-full border border-brand-100 dark:border-brand-900/50">Planner</span></h1>
+                    <p class="text-xs text-slate-400">高效管理你的每一天</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <!-- 暗黑模式切换 -->
+                <button id="themeToggleBtn" class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all focus:outline-none" title="切换暗黑模式">
+                    <i class="fa-solid fa-moon text-lg dark:hidden"></i>
+                    <i class="fa-solid fa-sun text-lg hidden dark:block text-yellow-400"></i>
+                </button>
+                
+                <!-- 新增日程按钮 -->
+                <button onclick="openModal()" class="flex items-center space-x-2 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-brand-500/20 transition-all font-medium text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span class="hidden sm:inline">创建日程</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主体区域 -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- 左侧面板：分类筛选、今日聚焦、日程概览 -->
+            <section class="lg:col-span-4 space-y-6">
+                <!-- 今日卡片 -->
+                <div class="bg-gradient-to-br from-brand-600 to-indigo-700 text-white rounded-2xl p-6 shadow-xl shadow-indigo-500/10">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p id="todayWeekDay" class="text-indigo-200 text-sm font-medium tracking-wider uppercase">---</p>
+                            <h2 id="todayDateStr" class="text-2xl font-bold mt-1">---</h2>
+                        </div>
+                        <span class="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-md">今天</span>
+                    </div>
+                    <div class="mt-6 flex items-center justify-between border-t border-white/10 pt-4">
+                        <div>
+                            <p class="text-indigo-200 text-xs">今日待办数量</p>
+                            <p id="todayCount" class="text-2xl font-bold mt-1">0</p>
+                        </div>
+                        <i class="fa-solid fa-cloud-sun text-3xl opacity-80"></i>
+                    </div>
+                </div>
+
+                <!-- 分类筛选器 -->
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 transition-colors">
+                    <h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-4 flex items-center justify-between">
+                        <span><i class="fa-solid fa-sliders mr-2"></i>日程筛选</span>
+                        <button id="clearFilters" class="text-xs text-brand-500 hover:underline hidden" onclick="resetFilters()">重置</button>
+                    </h3>
+                    
+                    <!-- 搜索框 -->
+                    <div class="relative mb-4">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fa-solid fa-magnifying-glass text-slate-400 text-sm"></i>
+                        </span>
+                        <input type="text" id="searchInput" placeholder="搜索日程..." class="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors">
+                    </div>
+
+                    <!-- 分类标签 -->
+                    <div class="space-y-2">
+                        <button onclick="setCategoryFilter('all')" id="filter-all" class="w-full flex items-center justify-between p-2.5 rounded-xl bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-medium text-sm transition-all text-left">
+                            <span class="flex items-center"><i class="fa-solid fa-border-all mr-3"></i>全部日程</span>
+                            <span id="allCountBadge" class="bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300 text-xs px-2 py-0.5 rounded-full">0</span>
+                        </button>
+                        <button onclick="setCategoryFilter('work')" id="filter-work" class="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-sm transition-all text-left">
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-blue-500 mr-3"></span>工作安排</span>
+                            <span id="workCountBadge" class="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs px-2 py-0.5 rounded-full">0</span>
+                        </button>
+                        <button onclick="setCategoryFilter('personal')" id="filter-personal" class="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-sm transition-all text-left">
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-3"></span>个人生活</span>
+                            <span id="personalCountBadge" class="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs px-2 py-0.5 rounded-full">0</span>
+                        </button>
+                        <button onclick="setCategoryFilter('study')" id="filter-study" class="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-sm transition-all text-left">
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-purple-500 mr-3"></span>学习提升</span>
+                            <span id="studyCountBadge" class="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs px-2 py-0.5 rounded-full">0</span>
+                        </button>
+                        <button onclick="setCategoryFilter('urgent')" id="filter-urgent" class="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-sm transition-all text-left">
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-rose-500 mr-3"></span>紧急重要</span>
+                            <span id="urgentCountBadge" class="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs px-2 py-0.5 rounded-full">0</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 右侧面板：日历 & 选定日期的日程列表 -->
+            <section class="lg:col-span-8 space-y-6">
+                <!-- 日历主容器 -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+                    <!-- 日历头部导航 -->
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-slate-100 dark:border-slate-700 gap-4">
+                        <div class="flex items-center space-x-4">
+                            <button onclick="navigateMonth(-1)" class="w-10 h-10 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors focus:outline-none">
+                                <i class="fa-solid fa-chevron-left text-sm"></i>
+                            </button>
+                            <h2 id="calendarTitle" class="text-xl font-bold tracking-tight min-w-[120px] text-center sm:text-left">2026年 05月</h2>
+                            <button onclick="navigateMonth(1)" class="w-10 h-10 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors focus:outline-none">
+                                <i class="fa-solid fa-chevron-right text-sm"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="goToToday()" class="px-4 py-2 text-sm font-medium border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors focus:outline-none">
+                                返回今天
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 日历网格 -->
+                    <div class="mt-6">
+                        <!-- 星期表头 -->
+                        <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
+                            <div>日</div>
+                            <div>一</div>
+                            <div>二</div>
+                            <div>三</div>
+                            <div>四</div>
+                            <div>五</div>
+                            <div>六</div>
+                        </div>
+                        <!-- 日历号数 -->
+                        <div id="calendarDaysGrid" class="grid grid-cols-7 gap-2">
+                            <!-- JS 动态填充 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 选定日期的日程详细列表 -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-700 mb-4">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-list-check text-brand-500"></i>
+                            <h3 class="font-bold text-lg"><span id="selectedDateTitle">05月17日</span> 的日程</h3>
+                        </div>
+                        <span id="selectedEventsCount" class="text-xs font-medium text-slate-400 bg-slate-50 dark:bg-slate-900 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-700">共 0 项日程</span>
+                    </div>
+
+                    <!-- 日程列表 -->
+                    <div id="eventListContainer" class="space-y-3 min-h-[100px] flex flex-col justify-center">
+                        <!-- JS 动态填充 -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 mt-12 py-6 text-center text-sm text-slate-400 transition-colors">
+        <p>© 2026 时光日程 Planner. 由 HTML, Tailwind CSS & JS 驱动.</p>
+        <p class="text-xs mt-1">你的日程完全保存在本地浏览器缓存中，不会泄露给任何服务器。</p>
+    </footer>
+
+    <!-- 添加/编辑日程模态框 -->
+    <div id="eventModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-all duration-300">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-700 transform scale-95 transition-all duration-300" id="modalCard">
+            <!-- 模态框头部 -->
+            <div class="bg-gradient-to-r from-brand-500 to-indigo-600 px-6 py-4 flex items-center justify-between text-white">
+                <h3 id="modalTitle" class="font-bold text-lg">新建日程</h3>
+                <button onclick="closeModal()" class="text-white/80 hover:text-white hover:bg-white/10 w-8 h-8 flex items-center justify-center rounded-lg transition-colors focus:outline-none">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <!-- 模态框表单 -->
+            <form id="eventForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="eventId">
+                
+                <!-- 日程标题 -->
+                <div>
+                    <label for="eventTitle" class="block text-xs font-semibold text-slate-400 uppercase mb-1">日程名称 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="eventTitle" required placeholder="例如：团队周会、去图书馆..." class="w-full px-4 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors">
+                </div>
+
+                <!-- 日期 & 时间 -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="eventDate" class="block text-xs font-semibold text-slate-400 uppercase mb-1">日期 <span class="text-rose-500">*</span></label>
+                        <input type="date" id="eventDate" required class="w-full px-4 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors">
+                    </div>
+                    <div>
+                        <label for="eventTime" class="block text-xs font-semibold text-slate-400 uppercase mb-1">时间</label>
+                        <input type="time" id="eventTime" class="w-full px-4 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors">
+                    </div>
+                </div>
+
+                <!-- 分类选择 -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 uppercase mb-2">分类标签</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center space-x-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 cursor-pointer text-sm">
+                            <input type="radio" name="eventCategory" value="work" checked class="text-brand-500 focus:ring-brand-500">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>
+                            <span>工作安排</span>
+                        </label>
+                        <label class="flex items-center space-x-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 cursor-pointer text-sm">
+                            <input type="radio" name="eventCategory" value="personal" class="text-brand-500 focus:ring-brand-500">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                            <span>个人生活</span>
+                        </label>
+                        <label class="flex items-center space-x-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 cursor-pointer text-sm">
+                            <input type="radio" name="eventCategory" value="study" class="text-brand-500 focus:ring-brand-500">
+                            <span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span>
+                            <span>学习提升</span>
+                        </label>
+                        <label class="flex items-center space-x-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 cursor-pointer text-sm">
+                            <input type="radio" name="eventCategory" value="urgent" class="text-brand-500 focus:ring-brand-500">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
+                            <span>紧急重要</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 描述备注 -->
+                <div>
+                    <label for="eventDesc" class="block text-xs font-semibold text-slate-400 uppercase mb-1">备注/详细说明</label>
+                    <textarea id="eventDesc" rows="3" placeholder="添加备注或具体日程内容描述..." class="w-full px-4 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors resize-none"></textarea>
+                </div>
+
+                <!-- 底部按钮 -->
+                <div class="flex items-center space-x-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+                    <button type="button" onclick="closeModal()" class="flex-1 py-2 text-sm font-semibold border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-all focus:outline-none">取消</button>
+                    <button type="submit" class="flex-1 py-2 text-sm font-semibold bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-md shadow-brand-500/10 transition-all focus:outline-none">保存日程</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 全局状态和程序逻辑 -->
+    <script>
+        // --- 核心全局状态 ---
+        let currentYear, currentMonth;
+        let selectedDate = new Date(); // 默认选中今天
+        let filterCategory = 'all';    // 默认展示全部
+        let searchQuery = '';          // 搜索关键词
+        let events = [];               // 日程数据集
+
+        // 颜色映射配置
+        const CATEGORIES = {
+            work: { color: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/20', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-900/50', name: '工作安排' },
+            personal: { color: 'bg-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-900/50', name: '个人生活' },
+            study: { color: 'bg-purple-500', bg: 'bg-purple-50 dark:bg-purple-950/20', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-900/50', name: '学习提升' },
+            urgent: { color: 'bg-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/20', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-900/50', name: '紧急重要' }
+        };
+
+        // 页面启动初始化
+        window.onload = function() {
+            // 1. 初始化暗黑模式设置
+            initTheme();
+            
+            // 2. 从本地缓存获取日程
+            loadEventsFromLocalStorage();
+            
+            // 3. 设置当前年、月、日
+            const today = new Date();
+            currentYear = today.getFullYear();
+            currentMonth = today.getMonth(); // 0-11
+            
+            // 4. 更新左上角今天卡片的信息
+            updateTodayCard(today);
+            
+            // 5. 绑定搜索输入事件
+            document.getElementById('searchInput').addEventListener('input', function(e) {
+                searchQuery = e.target.value.toLowerCase().trim();
+                renderAll();
+            });
+
+            // 6. 进行首次完整渲染
+            renderAll();
+        };
+
+        // --- 数据存储逻辑 ---
+        function loadEventsFromLocalStorage() {
+            const localData = localStorage.getItem('planner_events');
+            if (localData) {
+                try {
+                    events = JSON.parse(localData);
+                    // 确保日期是字符串格式
+                    events.forEach(e => {
+                        if (e.date instanceof Date) {
+                            e.date = formatDateToString(e.date);
+                        }
+                    });
+                } catch (err) {
+                    console.error('本地数据解析失败:', err);
+                    events = [];
+                }
+            } else {
+                // 如果没有数据，初始化一些演示数据
+                initDemoEvents();
+            }
+        }
+
+        function saveEventsToLocalStorage() {
+            localStorage.setItem('planner_events', JSON.stringify(events));
+            updateSidebarCounts();
+        }
+
+        function initDemoEvents() {
+            const today = new Date();
+            const formatDay = (offset) => {
+                const d = new Date(today);
+                d.setDate(today.getDate() + offset);
+                return formatDateToString(d);
+            };
+            
+            events = [
+                { id: '1', title: '🚀 部署日程应用到 GitHub Pages', date: formatDay(0), time: '14:30', category: 'work', description: '参考 github_pages_deploy_guide.md 部署第一个静态应用！' },
+                { id: '2', title: '📖 极简日程应用操作指引', date: formatDay(0), time: '09:00', category: 'study', description: '熟悉添加、编辑、删除等功能。在日历中点击不同的日期即可创建新日程。' },
+                { id: '3', title: '🏃 晚上去公园慢跑 5 公里', date: formatDay(1), time: '19:30', category: 'personal', description: '记得穿跑鞋，带上水壶。' },
+                { id: '4', title: '⚠️ 项目代码合并截止时间', date: formatDay(2), time: '18:00', category: 'urgent', description: '紧急重要，确保所有功能没有遗留 Bug 并按时合并。' }
+            ];
+            saveEventsToLocalStorage();
+        }
+
+        // --- 辅助日期转换工具 ---
+        function formatDateToString(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function parseStringToDate(str) {
+            const [y, m, d] = str.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        // --- 黑暗模式功能 ---
+        function initTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            
+            document.getElementById('themeToggleBtn').addEventListener('click', () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.theme = 'light';
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.theme = 'dark';
+                }
+            });
+        }
+
+        // 更新“今天聚焦”卡片
+        function updateTodayCard(today) {
+            const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            document.getElementById('todayWeekDay').innerText = weekdays[today.getDay()];
+            document.getElementById('todayDateStr').innerText = `${today.getFullYear()}年 ${today.getMonth() + 1}月 ${today.getDate()}日`;
+            
+            // 计算今天日程数
+            const todayStr = formatDateToString(today);
+            const todayEventsCount = events.filter(e => e.date === todayStr).length;
+            document.getElementById('todayCount').innerText = todayEventsCount;
+        }
+
+        // --- 核心渲染引擎 ---
+        function renderAll() {
+            renderCalendar();
+            renderEventList();
+            updateSidebarCounts();
+        }
+
+        // 渲染日历网格
+        function renderCalendar() {
+            const grid = document.getElementById('calendarDaysGrid');
+            grid.innerHTML = ''; // 清空重新渲染
+
+            // 显示当前的年月头部
+            document.getElementById('calendarTitle').innerText = `${currentYear}年 ${String(currentMonth + 1).padStart(2, '0')}月`;
+
+            // 获取本月的第一天和总天数
+            const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+            const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+            
+            // 获取上月的总天数，填补空白
+            const prevMonthTotalDays = new Date(currentYear, currentMonth, 0).getDate();
+
+            // 1. 填充上月的尾部日期
+            for (let i = firstDayIndex - 1; i >= 0; i--) {
+                const dayNum = prevMonthTotalDays - i;
+                const dateStr = formatDateToString(new Date(currentYear, currentMonth - 1, dayNum));
+                grid.appendChild(createDayCell(dayNum, dateStr, 'prev-month'));
+            }
+
+            // 2. 填充本月的日期
+            const todayStr = formatDateToString(new Date());
+            const selectedDateStr = formatDateToString(selectedDate);
+
+            for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
+                const dateStr = formatDateToString(new Date(currentYear, currentMonth, dayNum));
+                let status = 'current-month';
+                if (dateStr === todayStr) status += ' is-today';
+                if (dateStr === selectedDateStr) status += ' is-selected';
+                grid.appendChild(createDayCell(dayNum, dateStr, status));
+            }
+
+            // 3. 填充下月的头部日期
+            const totalCellsSoFar = firstDayIndex + totalDays;
+            const remainingCells = totalCellsSoFar % 7 === 0 ? 0 : 7 - (totalCellsSoFar % 7);
+            for (let dayNum = 1; dayNum <= remainingCells; dayNum++) {
+                const dateStr = formatDateToString(new Date(currentYear, currentMonth + 1, dayNum));
+                grid.appendChild(createDayCell(dayNum, dateStr, 'next-month'));
+            }
+        }
+
+        // 创建每一个日期格子的元素
+        function createDayCell(dayNum, dateStr, status) {
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = `calendar-grid-cell relative p-2 rounded-xl flex flex-col justify-between hover:bg-brand-50/50 dark:hover:bg-brand-950/20 transition-all border group text-left focus:outline-none `;
+
+            const isToday = status.includes('is-today');
+            const isSelected = status.includes('is-selected');
+            const isOtherMonth = status.includes('prev-month') || status.includes('next-month');
+
+            // 基础样式
+            if (isOtherMonth) {
+                cell.className += ' text-slate-300 dark:text-slate-600 border-transparent';
+            } else if (isSelected) {
+                cell.className += ' border-brand-500 bg-brand-500/10 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 font-bold scale-[1.03] shadow-sm shadow-brand-500/10';
+            } else if (isToday) {
+                cell.className += ' border-brand-500 text-brand-500 font-bold bg-white dark:bg-slate-800 shadow-inner';
+            } else {
+                cell.className += ' border-slate-100 dark:border-slate-700/30 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300';
+            }
+
+            // HTML 内容组成
+            let cellContent = `<span class="text-sm">${dayNum}</span>`;
+
+            // 日程小圆点渲染
+            const dayEvents = events.filter(e => e.date === dateStr);
+            if (dayEvents.length > 0) {
+                cellContent += `<div class="flex flex-wrap gap-1 mt-1 max-h-[16px] overflow-hidden">`;
+                // 按分类画不同颜色小点，最多展示三个
+                dayEvents.slice(0, 3).forEach(e => {
+                    const catObj = CATEGORIES[e.category] || CATEGORIES.work;
+                    cellContent += `<span class="w-1.5 h-1.5 rounded-full ${catObj.color}" title="${e.title}"></span>`;
+                });
+                if (dayEvents.length > 3) {
+                    cellContent += `<span class="text-[8px] leading-none text-slate-400">+${dayEvents.length - 3}</span>`;
+                }
+                cellContent += `</div>`;
+            }
+
+            cell.innerHTML = cellContent;
+            
+            // 绑定点击选中日期逻辑
+            cell.onclick = () => {
+                selectedDate = parseStringToDate(dateStr);
+                renderAll();
+            };
+
+            return cell;
+        }
+
+        // 渲染选定日期的日程列表
+        function renderEventList() {
+            const listContainer = document.getElementById('eventListContainer');
+            const selectedDateStr = formatDateToString(selectedDate);
+            
+            // 转化选定日期标题
+            const formattedTitle = `${selectedDate.getMonth() + 1}月${selectedDate.getDate()}日`;
+            document.getElementById('selectedDateTitle').innerText = formattedTitle;
+
+            // 过滤：按日期 -> 按分类筛选 -> 按关键词搜索
+            let filtered = events.filter(e => e.date === selectedDateStr);
+            
+            if (filterCategory !== 'all') {
+                filtered = filtered.filter(e => e.category === filterCategory);
+            }
+            if (searchQuery) {
+                filtered = filtered.filter(e => e.title.toLowerCase().includes(searchQuery) || (e.description && e.description.toLowerCase().includes(searchQuery)));
+            }
+
+            document.getElementById('selectedEventsCount').innerText = `共 ${filtered.length} 项日程`;
+
+            if (filtered.length === 0) {
+                // 空白缺省页
+                listContainer.className = "space-y-3 min-h-[120px] flex flex-col justify-center items-center text-center p-6";
+                listContainer.innerHTML = `
+                    <div class="text-slate-300 dark:text-slate-600 mb-2">
+                        <i class="fa-regular fa-calendar-minus text-4xl"></i>
+                    </div>
+                    <p class="text-sm text-slate-400">当天没有对应的日程安排</p>
+                    <button onclick="openModal()" class="text-xs text-brand-500 font-medium hover:underline mt-1">
+                        立即在此处添加日程 <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                `;
+                return;
+            }
+
+            listContainer.className = "space-y-3";
+            listContainer.innerHTML = '';
+
+            // 渲染日程条目
+            filtered.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00')).forEach(event => {
+                const catObj = CATEGORIES[event.category] || CATEGORIES.work;
+                
+                const item = document.createElement('div');
+                item.className = `flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border ${catObj.bg} ${catObj.border} transition-all hover:shadow-sm`;
+                
+                item.innerHTML = `
+                    <div class="flex items-start space-x-3">
+                        <div class="mt-1 flex-shrink-0">
+                            <span class="w-3 h-3 rounded-full ${catObj.color} block"></span>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2 flex-wrap gap-1">
+                                <span class="font-bold text-slate-800 dark:text-slate-100 text-sm sm:text-base">${event.title}</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full ${catObj.color} bg-opacity-20 text-white font-medium bg-slate-400 dark:bg-slate-700">${catObj.name}</span>
+                                ${event.time ? `<span class="text-xs text-slate-500 dark:text-slate-400 font-medium bg-white/60 dark:bg-slate-800/60 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-700/40"><i class="fa-regular fa-clock mr-1"></i>${event.time}</span>` : ''}
+                            </div>
+                            ${event.description ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-line leading-relaxed">${event.description}</p>` : ''}
+                        </div>
+                    </div>
+                    <!-- 控制按钮 -->
+                    <div class="flex items-center justify-end space-x-1 mt-3 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-200/40 dark:border-slate-700/40">
+                        <button onclick="editEvent('${event.id}')" class="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/20 rounded-lg transition-colors" title="修改日程">
+                            <i class="fa-solid fa-pen text-xs"></i>
+                        </button>
+                        <button onclick="deleteEvent('${event.id}')" class="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors" title="删除日程">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+        }
+
+        // 更新侧边栏分类计数器
+        function updateSidebarCounts() {
+            // 清理全部侧边栏的高亮态样式
+            const buttons = ['all', 'work', 'personal', 'study', 'urgent'];
+            buttons.forEach(btn => {
+                const el = document.getElementById(`filter-${btn}`);
+                if (el) {
+                    el.className = `w-full flex items-center justify-between p-2.5 rounded-xl text-sm transition-all text-left ${filterCategory === btn ? 'bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300'}`;
+                }
+            });
+
+            // 计算各类日程数量
+            const counts = { all: events.length, work: 0, personal: 0, study: 0, urgent: 0 };
+            events.forEach(e => {
+                if (counts[e.category] !== undefined) {
+                    counts[e.category]++;
+                }
+            });
+
+            // 更新到网页上
+            document.getElementById('allCountBadge').innerText = counts.all;
+            document.getElementById('workCountBadge').innerText = counts.work;
+            document.getElementById('personalCountBadge').innerText = counts.personal;
+            document.getElementById('studyCountBadge').innerText = counts.study;
+            document.getElementById('urgentCountBadge').innerText = counts.urgent;
+
+            // 如果设置了筛选，显示“重置”按钮
+            const isFilterApplied = filterCategory !== 'all' || searchQuery !== '';
+            document.getElementById('clearFilters').className = isFilterApplied ? 'text-xs text-brand-500 hover:underline inline-block' : 'hidden';
+        }
+
+        // --- 交互及控制逻辑 ---
+
+        // 月份切换
+        function navigateMonth(direction) {
+            currentMonth += direction;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            } else if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderAll();
+        }
+
+        // 返回今天
+        function goToToday() {
+            const today = new Date();
+            selectedDate = today;
+            currentYear = today.getFullYear();
+            currentMonth = today.getMonth();
+            renderAll();
+        }
+
+        // 切换侧边栏筛选
+        function setCategoryFilter(category) {
+            filterCategory = category;
+            renderAll();
+        }
+
+        // 重置所有筛选器
+        function resetFilters() {
+            filterCategory = 'all';
+            searchQuery = '';
+            document.getElementById('searchInput').value = '';
+            renderAll();
+        }
+
+        // --- 模态框显示与隐藏 ---
+        function openModal() {
+            const modal = document.getElementById('eventModal');
+            const card = document.getElementById('modalCard');
+            
+            // 重置表单并将选定日期填入
+            document.getElementById('eventForm').reset();
+            document.getElementById('eventId').value = '';
+            document.getElementById('eventDate').value = formatDateToString(selectedDate);
+            document.getElementById('modalTitle').innerText = '新建日程';
+
+            modal.classList.remove('hidden');
+            // 稍加延迟，保证 CSS 渐变效果起作用
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                card.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('eventModal');
+            const card = document.getElementById('modalCard');
+            
+            modal.classList.add('opacity-0');
+            card.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // --- 日程的新增/修改/删除 ---
+
+        // 处理表单提交
+        function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('eventId').value;
+            const title = document.getElementById('eventTitle').value.trim();
+            const date = document.getElementById('eventDate').value;
+            const time = document.getElementById('eventTime').value;
+            const description = document.getElementById('eventDesc').value.trim();
+            
+            // 获取选中的分类单选框
+            const categoryElements = document.getElementsByName('eventCategory');
+            let category = 'work';
+            for (let el of categoryElements) {
+                if (el.checked) {
+                    category = el.value;
+                    break;
+                }
+            }
+
+            if (!title || !date) return;
+
+            if (id) {
+                // 修改现有日程
+                const idx = events.findIndex(e => e.id === id);
+                if (idx !== -1) {
+                    events[idx] = { id, title, date, time, category, description };
+                }
+            } else {
+                // 添加全新日程
+                const newId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+                events.push({ id: newId, title, date, time, category, description });
+            }
+
+            // 保存并渲染
+            saveEventsToLocalStorage();
+            selectedDate = parseStringToDate(date); // 自动将视图切换至新增日程的日期
+            currentYear = selectedDate.getFullYear();
+            currentMonth = selectedDate.getMonth();
+            
+            // 更新今天卡片的计数
+            updateTodayCard(new Date());
+            
+            renderAll();
+            closeModal();
+        }
+
+        // 修改日程
+        function editEvent(id) {
+            const event = events.find(e => e.id === id);
+            if (!event) return;
+
+            // 打开模态框并填充已有数据
+            openModal();
+            document.getElementById('modalTitle').innerText = '编辑日程';
+            document.getElementById('eventId').value = event.id;
+            document.getElementById('eventTitle').value = event.title;
+            document.getElementById('eventDate').value = event.date;
+            document.getElementById('eventTime').value = event.time || '';
+            document.getElementById('eventDesc').value = event.description || '';
+
+            // 设置选中的分类单选框
+            const categoryElements = document.getElementsByName('eventCategory');
+            for (let el of categoryElements) {
+                el.checked = (el.value === event.category);
+            }
+        }
+
+        // 删除日程
+        function deleteEvent(id) {
+            // 自定义优雅的确认提示
+            const confirmDel = confirm("您确定要删除这项日程安排吗？此操作不可撤销。");
+            if (confirmDel) {
+                events = events.filter(e => e.id !== id);
+                saveEventsToLocalStorage();
+                updateTodayCard(new Date());
+                renderAll();
+            }
+        }
+    </script>
+</body>
+</html>
+```
+eof
+
+### 功能亮点：
+1. **现代化质感设计**：应用采用了高端大气的 Slate/Indigo/Violet 配色体系，拥有精美的卡片化设计、流畅的平滑切换效果、自定义极简滚动条和全响应式布局。
+2. **完美支持暗黑模式**：内置一键切换主题功能，适配白天与夜间的不同阅读习惯，视觉体验极佳。
+3. **强大的日历算法**：完美解决大小月、闰年以及星期一至星期日表头对齐的排版痛点，能够在日历空格内以不同色彩圆点展示当天日程的饱和度。
+4. **灵活筛选器**：支持按照模糊关键字检索日程，还能够分类过滤（工作安排、个人生活、学习提升、紧急重要）。
+5. **本地数据存储 (localStorage)**：数据全部保存在浏览器本地，即使在 GitHub Pages 上重新加载也不会丢失！
+6. **轻松部署**：由于只有一个 `index.html` 文件且引用了在线字体与 Tailwind CDN，因此无需任何复杂的构建系统，直接部署即用。
