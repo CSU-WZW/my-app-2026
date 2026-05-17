@@ -449,15 +449,23 @@
                 }
             });
 
-            // 页面加载时尝试播放（浏览器可能阻止）
-            if (isMusicOn) {
-                const playPromise = audio.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(() => {
-                        console.log('浏览器阻止自动播放，请点击页面任意位置或音乐按钮后再试。');
+            // 添加用户交互事件来触发音乐播放（解决浏览器自动播放限制）
+            const playAudio = () => {
+                if (isMusicOn && audio.paused) {
+                    audio.play().catch(() => {
+                        console.log('自动播放失败');
                     });
                 }
-            }
+                // 只需触发一次，移除监听
+                document.removeEventListener('click', playAudio);
+                document.removeEventListener('keydown', playAudio);
+                document.removeEventListener('touchstart', playAudio);
+            };
+            
+            // 监听用户交互事件
+            document.addEventListener('click', playAudio);
+            document.addEventListener('keydown', playAudio);
+            document.addEventListener('touchstart', playAudio);
         }
 
         function updateMusicButton() {
