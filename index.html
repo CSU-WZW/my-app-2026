@@ -11,6 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Lunar Calendar Library -->
+    <script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.13/lunar.min.js"></script>
     
     <script>
         tailwind.config = {
@@ -59,7 +61,8 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
         .calendar-grid-cell {
-            aspect-ratio: 1.1 / 1;
+            aspect-ratio: 1 / 1.15;
+            min-height: 4rem;
         }
     </style>
 </head>
@@ -153,6 +156,14 @@
                         <button onclick="setCategoryFilter('urgent')" id="filter-urgent" class="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-sm transition-all text-left">
                             <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-rose-500 mr-3"></span>紧急重要</span>
                             <span id="urgentCountBadge" class="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs px-2 py-0.5 rounded-full">0</span>
+                        </button>
+                        <button onclick="setCategoryFilter('birthday')" id="filter-birthday" class="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-sm transition-all text-left">
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-pink-500 mr-3"></span>🎂 生日</span>
+                            <span id="birthdayCountBadge" class="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs px-2 py-0.5 rounded-full">0</span>
+                        </button>
+                        <button onclick="setCategoryFilter('important')" id="filter-important" class="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-sm transition-all text-left">
+                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-amber-500 mr-3"></span>⭐ 重要日期</span>
+                            <span id="importantCountBadge" class="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs px-2 py-0.5 rounded-full">0</span>
                         </button>
                     </div>
                 </div>
@@ -284,6 +295,16 @@
                             <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
                             <span>紧急重要</span>
                         </label>
+                        <label class="flex items-center space-x-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 cursor-pointer text-sm">
+                            <input type="radio" name="eventCategory" value="birthday" class="text-brand-500 focus:ring-brand-500">
+                            <span class="w-2.5 h-2.5 rounded-full bg-pink-500 inline-block"></span>
+                            <span>🎂 生日</span>
+                        </label>
+                        <label class="flex items-center space-x-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 cursor-pointer text-sm">
+                            <input type="radio" name="eventCategory" value="important" class="text-brand-500 focus:ring-brand-500">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+                            <span>⭐ 重要日期</span>
+                        </label>
                     </div>
                 </div>
 
@@ -313,10 +334,12 @@
 
         // 颜色映射配置
         const CATEGORIES = {
-            work: { color: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/20', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-900/50', name: '工作安排' },
-            personal: { color: 'bg-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-900/50', name: '个人生活' },
-            study: { color: 'bg-purple-500', bg: 'bg-purple-50 dark:bg-purple-950/20', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-900/50', name: '学习提升' },
-            urgent: { color: 'bg-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/20', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-900/50', name: '紧急重要' }
+            work: { color: 'bg-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/20', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-900/50', name: '工作安排', icon: 'fa-briefcase' },
+            personal: { color: 'bg-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-900/50', name: '个人生活', icon: 'fa-user' },
+            study: { color: 'bg-purple-500', bg: 'bg-purple-50 dark:bg-purple-950/20', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-900/50', name: '学习提升', icon: 'fa-graduation-cap' },
+            urgent: { color: 'bg-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/20', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-900/50', name: '紧急重要', icon: 'fa-circle-exclamation' },
+            birthday: { color: 'bg-pink-500', bg: 'bg-pink-50 dark:bg-pink-950/20', text: 'text-pink-700 dark:text-pink-300', border: 'border-pink-200 dark:border-pink-900/50', name: '🎂 生日', icon: 'fa-cake-candles' },
+            important: { color: 'bg-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/20', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-900/50', name: '⭐ 重要日期', icon: 'fa-star' }
         };
 
         // 页面启动初始化
@@ -509,7 +532,7 @@
         function createDayCell(dayNum, dateStr, status) {
             const cell = document.createElement('button');
             cell.type = 'button';
-            cell.className = `calendar-grid-cell relative p-2 rounded-xl flex flex-col justify-between hover:bg-brand-50/50 dark:hover:bg-brand-950/20 transition-all border group text-left focus:outline-none `;
+            cell.className = `calendar-grid-cell relative p-2 rounded-xl flex flex-col justify-between hover:bg-brand-50/50 dark:hover:bg-brand-950/20 transition-all border group text-left focus:outline-none ${festiveClass} `;
 
             const isToday = status.includes('is-today');
             const isSelected = status.includes('is-selected');
@@ -526,8 +549,48 @@
                 cell.className += ' border-slate-100 dark:border-slate-700/30 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300';
             }
 
-            // HTML 内容组成
-            let cellContent = `<span class="text-sm">${dayNum}</span>`;
+            // HTML 内容组成: 公历日期 + 农历日期
+            const cellDate = new Date(currentYear, currentMonth, dayNum);
+            let lunarText = '';
+            let lunarClass = 'text-[10px] leading-none';
+            let festiveClass = '';
+
+            if (!isOtherMonth) {
+                try {
+                    const lunar = Lunar.fromDate(cellDate);
+                    // 获取节气
+                    const solarTerm = lunar.getJieQi();
+                    if (solarTerm) {
+                        lunarText = solarTerm;
+                        lunarClass += ' text-amber-500 dark:text-amber-400 font-bold';
+                        festiveClass = ' border-amber-300 dark:border-amber-600';
+                    } else {
+                        // 获取农历日
+                        const lunarDay = lunar.getDayInChinese();
+                        const lunarMonth = lunar.getMonthInChinese();
+                        // 如果是初一显示月份，否则显示日期
+                        if (lunarDay === '初一') {
+                            lunarText = lunarMonth + '月';
+                        } else {
+                            lunarText = lunarDay;
+                        }
+                        // 农历节日高亮
+                        const festivals = lunar.getFestivals();
+                        if (festivals.length > 0) {
+                            lunarText = festivals[0].length <= 4 ? festivals[0] : festivals[0].slice(0, 4);
+                            lunarClass += ' text-rose-500 dark:text-rose-400 font-bold';
+                            festiveClass = ' border-rose-300 dark:border-rose-600';
+                        }
+                    }
+                } catch (e) {
+                    lunarText = '';
+                }
+            }
+
+            let cellContent = `<span class="text-sm font-medium">${dayNum}</span>`;
+            if (lunarText) {
+                cellContent += `<span class="${lunarClass}">${lunarText}</span>`;
+            }
 
             // 日程小圆点渲染
             const dayEvents = events.filter(e => e.date === dateStr);
@@ -632,7 +695,7 @@
         // 更新侧边栏分类计数器
         function updateSidebarCounts() {
             // 清理全部侧边栏的高亮态样式
-            const buttons = ['all', 'work', 'personal', 'study', 'urgent'];
+            const buttons = ['all', 'work', 'personal', 'study', 'urgent', 'birthday', 'important'];
             buttons.forEach(btn => {
                 const el = document.getElementById(`filter-${btn}`);
                 if (el) {
@@ -641,7 +704,7 @@
             });
 
             // 计算各类日程数量
-            const counts = { all: events.length, work: 0, personal: 0, study: 0, urgent: 0 };
+            const counts = { all: events.length, work: 0, personal: 0, study: 0, urgent: 0, birthday: 0, important: 0 };
             events.forEach(e => {
                 if (counts[e.category] !== undefined) {
                     counts[e.category]++;
