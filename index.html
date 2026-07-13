@@ -335,7 +335,7 @@
         // ═══════════════════════════════════════
         // 内嵌农历计算 (1900-2100, 无需 CDN)
         // ═══════════════════════════════════════
-        const LunarCalc = (function() {
+        var LunarCalc = (function() {
             // 农历数据 1900-2100 (每个年份4字节编码)
             const lunarInfo = [
                 0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
@@ -654,7 +654,7 @@
             let lunarClass = 'text-[10px] leading-none';
             let festiveClass = '';
 
-            if (!isOtherMonth) {
+            if (!isOtherMonth && typeof LunarCalc !== 'undefined') {
                 try {
                     const lunar = LunarCalc.solarToLunar(currentYear, currentMonth + 1, dayNum);
                     if (lunar.term) {
