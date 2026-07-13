@@ -84,10 +84,6 @@
                     <i class="fa-solid fa-moon text-lg dark:hidden"></i>
                     <i class="fa-solid fa-sun text-lg hidden dark:block text-yellow-400"></i>
                 </button>
-                <button id="musicToggleBtn" class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all focus:outline-none" title="切换背景音乐">
-                    <i class="fa-solid fa-music text-lg"></i>
-                </button>
-                
                 <!-- 新增日程按钮 -->
                 <button onclick="openModal()" class="flex items-center space-x-2 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-brand-500/20 transition-all font-medium text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
                     <i class="fa-solid fa-plus text-xs"></i>
@@ -168,11 +164,14 @@
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
                     <!-- 日历头部导航 -->
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-slate-100 dark:border-slate-700 gap-4">
-                        <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-3">
                             <button onclick="navigateMonth(-1)" class="w-10 h-10 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors focus:outline-none">
                                 <i class="fa-solid fa-chevron-left text-sm"></i>
                             </button>
-                            <h2 id="calendarTitle" class="text-xl font-bold tracking-tight min-w-[120px] text-center sm:text-left">2026年 05月</h2>
+                            <select id="yearSelect" onchange="onYearMonthChange()" class="px-3 py-2 text-sm font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"></select>
+                            <span class="text-lg font-bold text-slate-400">年</span>
+                            <select id="monthSelect" onchange="onYearMonthChange()" class="px-3 py-2 text-sm font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"></select>
+                            <span class="text-lg font-bold text-slate-400">月</span>
                             <button onclick="navigateMonth(1)" class="w-10 h-10 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors focus:outline-none">
                                 <i class="fa-solid fa-chevron-right text-sm"></i>
                             </button>
@@ -227,8 +226,6 @@
         <p>© 2026 时光日程 Planner. 由 HTML, Tailwind CSS & JS 驱动.</p>
         <p class="text-xs mt-1">你的日程完全保存在本地浏览器缓存中，不会泄露给任何服务器。</p>
     </footer>
-
-    <audio id="bgmAudio" src="Sunlight_on_the_Desk.mp3" loop preload="auto"></audio>
 
     <!-- 添加/编辑日程模态框 -->
     <div id="eventModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0 transition-all duration-300">
@@ -313,7 +310,6 @@
         let filterCategory = 'all';    // 默认展示全部
         let searchQuery = '';          // 搜索关键词
         let events = [];               // 日程数据集
-        let isMusicOn = true;          // 背景音乐开关状态（默认开启）
 
         // 颜色映射配置
         const CATEGORIES = {
@@ -328,10 +324,7 @@
             // 1. 初始化暗黑模式设置
             initTheme();
             
-            // 2. 初始化背景音乐设置
-            initMusic();
-            
-            // 3. 从本地缓存获取日程
+            // 2. 从本地缓存获取日程
             loadEventsFromLocalStorage();
             
             // 3. 设置当前年、月、日
@@ -428,67 +421,7 @@
             });
         }
 
-        function initMusic() {
-            const audio = document.getElementById('bgmAudio');
-            audio.volume = 0.35;
-            // 强制默认开启（忽略之前存储的关闭状态）
-            isMusicOn = true;
-            localStorage.setItem('musicEnabled', 'true');
-            updateMusicButton();
-
-            document.getElementById('musicToggleBtn').addEventListener('click', () => {
-                // 如果当前默认开启但播放器尚未开始播放，则先尝试开始播放，不直接切换关闭
-                if (isMusicOn && audio.paused) {
-                    audio.play().catch(() => {
-                        console.warn('浏览器阻止自动播放，等待用户交互后再播放。');
-                    });
-                    return;
-                }
-
-                isMusicOn = !isMusicOn;
-                localStorage.setItem('musicEnabled', isMusicOn);
-                updateMusicButton();
-                if (isMusicOn) {
-                    audio.play().catch(() => {
-                        console.warn('浏览器阻止自动播放，等待用户交互后再播放。');
-                    });
-                } else {
-                    audio.pause();
-                }
-            });
-
-            // 添加用户交互事件来触发音乐播放（解决浏览器自动播放限制）
-            const playAudio = () => {
-                if (isMusicOn && audio.paused) {
-                    audio.play().catch(() => {
-                        console.log('自动播放失败');
-                    });
-                }
-                // 只需触发一次，移除监听
-                document.removeEventListener('click', playAudio);
-                document.removeEventListener('keydown', playAudio);
-                document.removeEventListener('touchstart', playAudio);
-            };
-            
-            // 监听用户交互事件
-            document.addEventListener('click', playAudio);
-            document.addEventListener('keydown', playAudio);
-            document.addEventListener('touchstart', playAudio);
-        }
-
-        function updateMusicButton() {
-            const btn = document.getElementById('musicToggleBtn');
-            const icon = btn.querySelector('i');
-            if (isMusicOn) {
-                btn.classList.add('bg-brand-50', 'dark:bg-brand-950/40', 'text-brand-600', 'dark:text-brand-300');
-                icon.className = 'fa-solid fa-music text-lg';
-            } else {
-                btn.classList.remove('bg-brand-50', 'dark:bg-brand-950/40', 'text-brand-600', 'dark:text-brand-300');
-                icon.className = 'fa-solid fa-music-slash text-lg';
-            }
-        }
-
-        // 更新“今天聚焦”卡片
+        // 更新”今天聚焦”卡片
         function updateTodayCard(today) {
             const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
             document.getElementById('todayWeekDay').innerText = weekdays[today.getDay()];
@@ -512,8 +445,30 @@
             const grid = document.getElementById('calendarDaysGrid');
             grid.innerHTML = ''; // 清空重新渲染
 
-            // 显示当前的年月头部
-            document.getElementById('calendarTitle').innerText = `${currentYear}年 ${String(currentMonth + 1).padStart(2, '0')}月`;
+            // 显示当前的年月头部 + 填充年/月下拉选择器
+            const yearSelect = document.getElementById('yearSelect');
+            const monthSelect = document.getElementById('monthSelect');
+
+            // 年份选项：当前年份前后5年
+            const yearRange = 5;
+            yearSelect.innerHTML = '';
+            for (let y = currentYear - yearRange; y <= currentYear + yearRange; y++) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                if (y === currentYear) opt.selected = true;
+                yearSelect.appendChild(opt);
+            }
+
+            // 月份选项：1-12
+            monthSelect.innerHTML = '';
+            for (let m = 0; m < 12; m++) {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = String(m + 1).padStart(2, '0');
+                if (m === currentMonth) opt.selected = true;
+                monthSelect.appendChild(opt);
+            }
 
             // 获取本月的第一天和总天数
             const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
@@ -717,6 +672,13 @@
                 currentMonth = 11;
                 currentYear--;
             }
+            renderAll();
+        }
+
+        // 年/月下拉选择器变更
+        function onYearMonthChange() {
+            currentYear = parseInt(document.getElementById('yearSelect').value);
+            currentMonth = parseInt(document.getElementById('monthSelect').value);
             renderAll();
         }
 
