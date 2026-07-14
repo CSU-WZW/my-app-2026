@@ -632,7 +632,11 @@
         function createDayCell(dayNum, dateStr, status) {
             const cell = document.createElement('button');
             cell.type = 'button';
-            cell.className = `calendar-grid-cell relative p-2 rounded-xl flex flex-col justify-between hover:bg-brand-50/50 dark:hover:bg-brand-950/20 transition-all border group text-left focus:outline-none ${festiveClass} `;
+
+            // 先声明所有变量
+            let festiveClass = '';
+            let lunarText = '';
+            let lunarClass = 'text-[10px] leading-none';
 
             const isToday = status.includes('is-today');
             const isSelected = status.includes('is-selected');
@@ -640,19 +644,16 @@
 
             // 基础样式
             if (isOtherMonth) {
-                cell.className += ' text-slate-300 dark:text-slate-600 border-transparent';
+                cell.className = 'calendar-grid-cell relative p-2 rounded-xl flex flex-col justify-between hover:bg-brand-50/50 dark:hover:bg-brand-950/20 transition-all border group text-left focus:outline-none text-slate-300 dark:text-slate-600 border-transparent';
             } else if (isSelected) {
-                cell.className += ' border-brand-500 bg-brand-500/10 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 font-bold scale-[1.03] shadow-sm shadow-brand-500/10';
+                cell.className = 'calendar-grid-cell relative p-2 rounded-xl flex flex-col justify-between hover:bg-brand-50/50 dark:hover:bg-brand-950/20 transition-all border group text-left focus:outline-none border-brand-500 bg-brand-500/10 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 font-bold scale-[1.03] shadow-sm shadow-brand-500/10';
             } else if (isToday) {
-                cell.className += ' border-brand-500 text-brand-500 font-bold bg-white dark:bg-slate-800 shadow-inner';
+                cell.className = 'calendar-grid-cell relative p-2 rounded-xl flex flex-col justify-between hover:bg-brand-50/50 dark:hover:bg-brand-950/20 transition-all border group text-left focus:outline-none border-brand-500 text-brand-500 font-bold bg-white dark:bg-slate-800 shadow-inner';
             } else {
-                cell.className += ' border-slate-100 dark:border-slate-700/30 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300';
+                cell.className = 'calendar-grid-cell relative p-2 rounded-xl flex flex-col justify-between hover:bg-brand-50/50 dark:hover:bg-brand-950/20 transition-all border group text-left focus:outline-none border-slate-100 dark:border-slate-700/30 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300';
             }
 
             // HTML 内容组成: 公历日期 + 农历日期
-            let lunarText = '';
-            let lunarClass = 'text-[10px] leading-none';
-            let festiveClass = '';
 
             if (!isOtherMonth && typeof LunarCalc !== 'undefined') {
                 try {
