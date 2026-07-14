@@ -678,6 +678,11 @@
                 }
             }
 
+            // 应用节日/节气边框高亮
+            if (festiveClass) {
+                cell.className += festiveClass;
+            }
+
             let cellContent = `<span class="text-sm font-medium">${dayNum}</span>`;
             if (lunarText) {
                 cellContent += `<span class="${lunarClass}">${lunarText}</span>`;
