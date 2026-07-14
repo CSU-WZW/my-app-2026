@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>极简日程管理 - Planner</title>
     <link rel="icon" type="image/png" href="image.png">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="时光日程">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts Inter & Noto Sans SC -->
@@ -79,14 +84,18 @@
                 </div>
             </div>
             
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-3">
+                <!-- 编辑/只读模式切换 -->
+                <button id="editModeToggleBtn" class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all focus:outline-none" title="切换编辑/只读模式">
+                    <i id="editModeIcon" class="fa-solid fa-lock-open text-lg"></i>
+                </button>
                 <!-- 暗黑模式切换 -->
                 <button id="themeToggleBtn" class="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all focus:outline-none" title="切换暗黑模式">
                     <i class="fa-solid fa-moon text-lg dark:hidden"></i>
                     <i class="fa-solid fa-sun text-lg hidden dark:block text-yellow-400"></i>
                 </button>
-                <!-- 新增日程按钮 -->
-                <button onclick="openModal()" class="flex items-center space-x-2 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-brand-500/20 transition-all font-medium text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
+                <!-- 新增日程按钮（可编辑模式下可见） -->
+                <button onclick="openModal()" class="editable-only flex items-center space-x-2 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-brand-500/20 transition-all font-medium text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
                     <i class="fa-solid fa-plus text-xs"></i>
                     <span class="hidden sm:inline">创建日程</span>
                 </button>
@@ -444,10 +453,13 @@
 
         // 页面启动初始化
         window.onload = function() {
-            // 1. 初始化暗黑模式设置
+            // 1. 初始化暗黑模式
             initTheme();
-            
-            // 2. 从本地缓存获取日程
+
+            // 2. 初始化编辑模式
+            initEditMode();
+
+            // 3. 从本地缓存获取日程
             loadEventsFromLocalStorage();
             
             // 3. 设置当前年、月、日
@@ -464,7 +476,12 @@
                 renderAll();
             });
 
-            // 6. 进行首次完整渲染
+            // 6. 注册 Service Worker (PWA)
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js');
+            }
+
+            // 7. 进行首次完整渲染
             renderAll();
         };
 
@@ -523,6 +540,38 @@
         function parseStringToDate(str) {
             const [y, m, d] = str.split('-').map(Number);
             return new Date(y, m - 1, d);
+        }
+
+        // --- 编辑/只读模式切换 ---
+        let isEditMode = true;
+
+        function initEditMode() {
+            // 从 localStorage 读取上次的模式
+            const saved = localStorage.getItem('editMode');
+            if (saved === 'readonly') {
+                isEditMode = false;
+            }
+            applyEditMode();
+
+            document.getElementById('editModeToggleBtn').addEventListener('click', () => {
+                isEditMode = !isEditMode;
+                localStorage.setItem('editMode', isEditMode ? 'edit' : 'readonly');
+                applyEditMode();
+            });
+        }
+
+        function applyEditMode() {
+            const icon = document.getElementById('editModeIcon');
+            const editables = document.querySelectorAll('.editable-only');
+            if (isEditMode) {
+                icon.className = 'fa-solid fa-lock-open text-lg text-brand-500';
+                editables.forEach(el => el.style.display = '');
+                document.getElementById('editModeToggleBtn').title = '当前：可编辑模式（点击切换为只读）';
+            } else {
+                icon.className = 'fa-solid fa-lock text-lg text-slate-400';
+                editables.forEach(el => el.style.display = 'none');
+                document.getElementById('editModeToggleBtn').title = '当前：只读模式（点击切换为可编辑）';
+            }
         }
 
         // --- 黑暗模式功能 ---
@@ -774,8 +823,8 @@
                             ${event.description ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-line leading-relaxed">${event.description}</p>` : ''}
                         </div>
                     </div>
-                    <!-- 控制按钮 -->
-                    <div class="flex items-center justify-end space-x-1 mt-3 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-200/40 dark:border-slate-700/40">
+                    <!-- 控制按钮（可编辑模式下可见） -->
+                    <div class="editable-only flex items-center justify-end space-x-1 mt-3 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-200/40 dark:border-slate-700/40">
                         <button onclick="editEvent('${event.id}')" class="p-2 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/20 rounded-lg transition-colors" title="修改日程">
                             <i class="fa-solid fa-pen text-xs"></i>
                         </button>
