@@ -123,7 +123,7 @@
         body.screensaver-mode .calendar-grid-cell .text-sm {
             font-size: 1.2rem !important;
         }
-        /* 屏保时钟 */
+        /* 屏保时钟 + 退出按钮 */
         #screensaverClock {
             display: none;
             position: fixed;
@@ -136,8 +136,41 @@
             z-index: 100;
             font-family: 'Inter', sans-serif;
         }
-        body.screensaver-mode #screensaverClock {
+        #screensaverExitBtn, #wallpaperBtn {
+            display: none;
+            position: fixed;
+            z-index: 101;
+            cursor: pointer;
+            border: none;
+            border-radius: 0.75rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-family: 'Inter', sans-serif;
+            transition: opacity 0.3s;
+        }
+        #screensaverExitBtn {
+            top: 2rem;
+            left: 2rem;
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.5);
+        }
+        #screensaverExitBtn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+        #wallpaperBtn {
+            top: 2rem;
+            left: 8rem;
+            background: rgba(99,102,241,0.3);
+            color: rgba(255,255,255,0.8);
+        }
+        #wallpaperBtn:hover { background: rgba(99,102,241,0.5); color: #fff; }
+        body.screensaver-mode #screensaverExitBtn,
+        body.screensaver-mode #screensaverClock,
+        body.screensaver-mode #wallpaperBtn {
             display: block;
+        }
+        body.screensaver-mode.show-controls #screensaverExitBtn,
+        body.screensaver-mode.show-controls #screensaverClock,
+        body.screensaver-mode.show-controls #wallpaperBtn {
+            opacity: 1;
         }
     </style>
 </head>
@@ -326,7 +359,9 @@
         <p class="text-xs mt-1">你的日程完全保存在本地浏览器缓存中，不会泄露给任何服务器。</p>
     </footer>
 
-    <!-- 屏保时钟 -->
+    <!-- 屏保模式控件 -->
+    <button id="screensaverExitBtn" onclick="exitScreensaver()">✕ 退出屏保</button>
+    <button id="wallpaperBtn" onclick="setAsWallpaper()">🖼 设为桌面壁纸</button>
     <div id="screensaverClock"></div>
 
     <!-- 添加/编辑日程模态框 -->
@@ -661,18 +696,43 @@
                 editables.forEach(el => el.style.display = '');
             } else if (appMode === 'readonly') {
                 icon.className = 'fa-solid fa-lock text-lg text-amber-500';
-                btn.title = '只读模式 → 点击切换为屏保';
+                btn.title = '只读模式 → 点击切换为壁纸屏保';
                 editables.forEach(el => el.style.display = 'none');
             } else {
-                // 屏保模式
+                // 壁纸/屏保模式
                 icon.className = 'fa-solid fa-desktop text-lg text-emerald-400';
-                btn.title = '屏保模式 → 点击返回编辑';
+                btn.title = '壁纸模式 → 点击返回编辑 | 按Esc退出';
                 editables.forEach(el => el.style.display = 'none');
                 body.classList.add('screensaver-mode');
                 // 启动时钟
                 updateScreensaverClock();
                 screensaverClockInterval = setInterval(updateScreensaverClock, 1000);
+                // 3秒后自动隐藏控件，鼠标移动时显示
+                hideScreenControls();
             }
+        }
+
+        function hideScreenControls() {
+            document.body.classList.remove('show-controls');
+        }
+        let hideTimeout;
+        document.addEventListener('mousemove', () => {
+            if (appMode === 'screensaver') {
+                document.body.classList.add('show-controls');
+                clearTimeout(hideTimeout);
+                hideTimeout = setTimeout(hideScreenControls, 3000);
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && appMode === 'screensaver') {
+                exitScreensaver();
+            }
+        });
+
+        function exitScreensaver() {
+            appMode = 'readonly';
+            localStorage.setItem('appMode', 'readonly');
+            applyEditMode();
         }
 
         function updateScreensaverClock() {
@@ -683,6 +743,130 @@
                 const m = String(now.getMinutes()).padStart(2, '0');
                 clock.textContent = h + ':' + m;
             }
+        }
+
+        // --- 设为桌面壁纸 ---
+        function setAsWallpaper() {
+            // 用 html2canvas 的思路：截取日历区域生成图片
+            const calendarEl = document.querySelector('main > div > section:last-child > div:first-child');
+            if (!calendarEl) { alert('未找到日历区域'); return; }
+
+            // 使用 Canvas 手动绘制日历壁纸
+            const canvas = document.createElement('canvas');
+            const dpr = 2; // 高清输出
+            const w = 1920, h = 1080;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            // 深色背景
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, w, h);
+
+            // 绘制时钟
+            const now = new Date();
+            const timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = '300 48px Inter, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(timeStr, w - 80, 80);
+
+            // 绘制日历标题
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.font = '600 36px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(currentYear + '年 ' + String(currentMonth + 1).padStart(2, '0') + '月', w / 2, 80);
+
+            // 绘制日历网格
+            const today = new Date();
+            const todayStr = formatDateToString(today);
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const gridCols = 7;
+            const gridRows = Math.ceil((firstDay + totalDays) / 7);
+            const cellW = 230, cellH = 130;
+            const startX = (w - gridCols * cellW) / 2, startY = 160;
+            const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+
+            // 星期头
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = '500 16px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            for (let i = 0; i < 7; i++) {
+                ctx.fillText(weekdays[i], startX + i * cellW + cellW / 2, startY - 15);
+            }
+
+            // 日期格子
+            for (let r = 0; r < gridRows; r++) {
+                for (let c = 0; c < gridCols; c++) {
+                    const x = startX + c * cellW, y = startY + r * cellH;
+                    const idx = r * gridCols + c - firstDay;
+                    if (idx < 0 || idx >= totalDays) continue;
+                    const dayNum = idx + 1;
+
+                    // 格子背景
+                    const dateStr = formatDateToString(new Date(currentYear, currentMonth, dayNum));
+                    const isToday = dateStr === todayStr;
+                    ctx.fillStyle = isToday ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.03)';
+                    ctx.strokeStyle = isToday ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.06)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.roundRect(x + 4, y + 4, cellW - 8, cellH - 8, 16);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // 日期数字
+                    ctx.fillStyle = isToday ? '#a5b4fc' : '#cbd5e1';
+                    ctx.font = (isToday ? 'bold ' : '') + '28px Inter, sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(dayNum, x + 18, y + 38);
+
+                    // 农历
+                    try {
+                        const lunar = LunarCalc.solarToLunar(currentYear, currentMonth + 1, dayNum);
+                        let lunarTxt = '';
+                        if (lunar.term) {
+                            lunarTxt = lunar.term;
+                            ctx.fillStyle = '#fbbf24';
+                        } else if (lunar.festival) {
+                            lunarTxt = lunar.festival;
+                            ctx.fillStyle = '#fb7185';
+                        } else if (lunar.lDay) {
+                            lunarTxt = (lunar.lDay === '初一') ? (lunar.isLeap ? '闰' : '') + lunar.lMonth + '月' : lunar.lDay;
+                            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                        }
+                        if (lunarTxt) {
+                            ctx.font = '16px Inter, sans-serif';
+                            ctx.fillText(lunarTxt, x + 18, y + 65);
+                        }
+                    } catch (e) {}
+
+                    // 日程圆点
+                    const dayEvents = events.filter(e => e.date === dateStr);
+                    if (dayEvents.length > 0) {
+                        for (let ei = 0; ei < Math.min(dayEvents.length, 4); ei++) {
+                            const cat = CATEGORIES[dayEvents[ei].category] || CATEGORIES.work;
+                            ctx.fillStyle = cat.color.replace('bg-', '').replace('-500', '');
+                            ctx.beginPath();
+                            ctx.arc(x + 24 + ei * 12, y + 90, 4, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+
+                    isToday && ctx.stroke();
+                }
+            }
+
+            // 保存为文件并设壁纸
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'calendar_wallpaper.png';
+                a.click();
+                alert('壁纸图片已下载！\n\n请右键图片 → 设为桌面背景\n\n路径: 下载文件夹\\calendar_wallpaper.png');
+            }, 'image/png');
         }
 
         // --- 黑暗模式功能 ---
